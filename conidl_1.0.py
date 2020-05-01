@@ -72,7 +72,7 @@ def getJsPlayer(video_webpage):
 
 
 # Cette video a un probleme de localisation je crois https://www.youtube.com/watch?v=2N4Qi5oYgDk
-video_url = "https://www.youtube.com/watch?v=DHFemeiBK3g"
+video_url = "https://www.youtube.com/watch?v=B9NokdAGVvw"
 
 video_id = getVideoID(video_url)
 video_webpage = getWebpage(video_url)
@@ -154,6 +154,7 @@ compat_chr = chr
 test_string = ''.join(map(compat_chr, range(len(sig))))
 cache_res = res(test_string)
 cache_spec = [ord(c) for c in cache_res]
+
 finalsig = ""
 for i in cache_spec:
     finalsig = finalsig+sig[i]
