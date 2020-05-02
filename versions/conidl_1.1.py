@@ -56,27 +56,7 @@ Dans le JSinterpreter :
     Funcname : C'est juste une recherche de string ('?=function(a){a=a.split("")}' il recherche le '?' en particulier)
 
 Et c'est la dernière partie que j'ai pas entièrement encore compris.
-"""
 
-""" All Itag
-249          webm       audio only tiny   55k , opus @ 50k (48000Hz), 1.67MiB
-250          webm       audio only tiny   73k , opus @ 70k (48000Hz), 2.21MiB
-140          m4a        audio only tiny  130k , m4a_dash container, mp4a.40.2@128k (44100Hz), 4.20MiB
-251          webm       audio only tiny  140k , opus @160k (48000Hz), 4.30MiB
-160          mp4        256x144    144p  121k , avc1.4d400c, 24fps, video only, 2.74MiB
-278          webm       256x144    144p  132k , webm container, vp9, 24fps, video only, 2.77MiB
-133          mp4        426x240    240p  267k , avc1.4d4015, 24fps, video only, 6.19MiB
-242          webm       426x240    240p  313k , vp9, 24fps, video only, 5.33MiB
-243          webm       640x360    360p  588k , vp9, 24fps, video only, 9.09MiB
-134          mp4        640x360    360p  609k , avc1.4d401e, 24fps, video only, 12.58MiB
-244          webm       854x480    480p 1137k , vp9, 24fps, video only, 15.74MiB
-135          mp4        854x480    480p 1154k , avc1.4d401e, 24fps, video only, 25.11MiB
-136          mp4        1280x720   720p 2251k , avc1.4d401f, 24fps, video only, 47.72MiB
-247          webm       1280x720   720p 2300k , vp9, 24fps, video only, 28.30MiB
-248          webm       1920x1080  1080p 3203k , vp9, 24fps, video only, 44.41MiB
-137          mp4        1920x1080  1080p 4567k , avc1.640028, 24fps, video only, 90.77MiB
-18           mp4        640x360    360p  530k , avc1.42001E, mp4a.40.2@ 96k (44100Hz), 17.19MiB
-22           mp4        1280x720   720p 1601k , avc1.64001F, mp4a.40.2@192k (44100Hz) (best)
 
 """
 
@@ -111,29 +91,26 @@ def _parse_sig_js(jscode):
         initial_function = jsi.extract_function(funcname)
         return lambda s: initial_function([s])
 
-def get_Video_ID(video_url):
+def getVideoID(video_url):
     try:
         video_id = video_url.split("=")[1]
     except IndexError:
         video_id = video_url.split("/")[-1]
     return video_id
 
-def get_Webpage(video_url):
+def getWebpage(video_url):
     video_webpage = requests.get(video_url)
     return video_webpage
 
-def get_js_player(video_webpage):
+def getJsPlayer(video_webpage):
     for i in video_webpage.iter_lines():
         if "assets" in i.decode():
             player_url = i.decode().split('"js":')[1].split('"')[1]
     return player_url
 
-def get_Itag(allItag,itag_id):
-    if '\\"itag\\"' in allItag:
-        itag_string = '\\"itag\\":'
-    else:
-        itag_string = '"itag":'
+#nic ca mere on fera un truc propre plus tard
 
+def getItag(allItag,itag_id):
     unItag = ""
     count0 = 0
     count1 = 0
@@ -147,14 +124,11 @@ def get_Itag(allItag,itag_id):
         
         if i != ",":
             if count0 == count1:
-                if itag_string+str(itag_id) in unItag:
+                if '"itag":'+str(itag_id) in unItag:
                     itag = unItag
-                    if itag[0] == ",":
-                        itag = itag[1:-1]
-                    if itag[-1] != "}":
-                        itag = itag+"}"
                     return itag
                 unItag = ""
+
 
 def sigYouMightBeSleeping(itag):
     cipher = '"cipher'+itag.split('cipher')[1][0:-1]
@@ -172,11 +146,9 @@ def sigYouMightBeSleeping(itag):
     url = urllib.parse.unquote(itag.split('url=')[1][0:-2]).split('%3')[0].split('\\')[0]
     return sig, url
 
+
 def sigWaleuleu(itag):
-    if '\\"url\\"' in itag:
-        url = itag.split('\\"url\\":\\"')[1].split('"')[0].replace('\\u0026','&').replace("\\/","/").replace("\\","")
-    else:
-        url = itag.split('url":"')[1].split('"')[0].replace('\\u0026','&')
+    url = itag.split('url":"')[1].split('"')[0].replace('\\u0026','&')
     return url
 
 def decodeSig(sig,url,player_url):
@@ -192,29 +164,28 @@ def decodeSig(sig,url,player_url):
     url = url+"&sig="+finalsig
     return url
 
-def get_all_itag(webpage):
-    if "html>" in webpage.text:
-        for i in webpage.iter_lines():
-            if 'adaptiveFormats' in i.decode():
-                allItag = i.decode().split('"adaptiveFormats\\":[')[1].split(']')[0]
-    else:
-        webpage = urllib.parse.unquote(webpage.text)
-        allItag = webpage.split('"adaptiveFormats":[')[1].split(']')[0]
-    return allItag
 
-video_url = input("Link : ")
+# Cette video a un probleme de localisation je crois https://www.youtube.com/watch?v=2N4Qi5oYgDk
+# video_url = "https://www.youtube.com/watch?v=B9NokdAGVvw"
+# video_url = "https://www.youtube.com/watch?v=WybG8FesMc8"
+# Ne télécharge pas les vidéos ayant des problèmes de localisations en "EN"
 
-video_id = get_Video_ID(video_url)
-video_webpage = get_Webpage(video_url)
-player_url = "http://youtube.com"+get_js_player(video_webpage).replace("\\/","/")
+video_url = input("Lien : ")
+
+video_id = getVideoID(video_url)
+video_webpage = getWebpage(video_url)
+player_url = "http://youtube.com"+getJsPlayer(video_webpage).replace("\\/","/")
+get_info_video_webpage = urllib.parse.unquote(requests.get("http://youtube.com/get_video_info?video_id="+video_id).text)
+
 
 try:
-    all_Itag = get_all_itag(video_webpage)
+    allItag = get_info_video_webpage.text.split('"adaptiveFormats":[')[1].split(']')[0]
 except:
-    get_info_video_webpage = requests.get("http://youtube.com/get_video_info?video_id="+video_id)
-    all_Itag = get_all_itag(get_info_video_webpage)
+    sys.exit("La vidéo à un problème de localisation")
+    #C'est une déduction, j'ai rien fais pour aller fouiller à l'intérieur
 
-itag140 = get_Itag(all_Itag,249)
+
+itag140 = getItag(allItag,140)
 
 if 'cipher' in itag140:
     sig, url = sigYouMightBeSleeping(itag140)
