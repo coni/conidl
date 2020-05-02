@@ -48,85 +48,11 @@ Et c'est la dernière partie que j'ai pas entièrement encore compris.
 
 """
 
-
+import urllib.request
 import requests
 import urllib.parse
 from jsinterp import JSInterpreter
 import os
-
-def getVideoID(video_url):
-    try:
-        video_id = video_url.split("=")[1]
-    except IndexError:
-        video_id = video_url.split("/")[-1]
-    return video_id
-
-def getWebpage(video_url):
-    video_webpage = requests.get(video_url)
-    return video_webpage
-
-def getJsPlayer(video_webpage):
-    for i in video_webpage.iter_lines():
-        if "assets" in i.decode():
-            player_url = i.decode().split('"js":')[1].split('"')[1]
-    return player_url
-
-
-# Cette video a un probleme de localisation je crois https://www.youtube.com/watch?v=2N4Qi5oYgDk
-video_url = "https://www.youtube.com/watch?v=B9NokdAGVvw"
-
-video_id = getVideoID(video_url)
-video_webpage = getWebpage(video_url)
-player_url = getJsPlayer(video_webpage)
-get_info_video_webpage = requests.get("http://youtube.com/get_video_info?video_id="+video_id)
-get_info_video_webpage = urllib.parse.unquote(get_info_video_webpage.text)
-
-
-allItag = get_info_video_webpage.split('"adaptiveFormats":[')[1].split(']')[0]
-
-
-#nic ca mere on fera un truc propre plus tard
-
-unItag = ""
-count0 = 0
-count1 = 0
-
-for i in allItag:
-    unItag = unItag+i
-    if i == "{":
-        count0 = count0+1
-    if i == "}":
-        count1 = count1+1
-    
-    if i != ",":
-        if count0 == count1:
-            if '"itag":140' in unItag:
-                itag140 = unItag
-            unItag = ""
-
-print(itag140)
-
-def sigYouMightBeSleeping(itag140):
-    cipher = '"cipher'+itag140.split('cipher')[1][0:-1]
-    cipher = urllib.parse.unquote(cipher)
-    error = True
-    temp = -1
-    sig = cipher.split('s=')[temp]
-    while error:
-        if len(sig) < 100 or 'cipher' in sig or '&' in sig:
-            temp = temp + 1
-            sig = cipher.split('s=')[temp].split("\\")[0]
-        else:
-            error = False
-    sig = sig.replace('"',"").split("\\")[0]
-    print(sig)
-    return sig
-
-sig = sigYouMightBeSleeping(itag140)
-url = urllib.parse.unquote(itag140.split('url=')[1][0:-2]).split('%3')[0].split('\\')[0]
-# print("len :",len(sig))
-# print("sig : "+sig)
-# print("url : "+url)
 
 def _parse_sig_js(jscode):
         # funcname = _search_regex(
@@ -149,36 +75,111 @@ def _parse_sig_js(jscode):
         initial_function = jsi.extract_function(funcname)
         return lambda s: initial_function([s])
 
-player_url = "http://youtube.com"+player_url.replace("\\/","/")
-# print(player_url)
-code = requests.get(player_url).text
+def getVideoID(video_url):
+    try:
+        video_id = video_url.split("=")[1]
+    except IndexError:
+        video_id = video_url.split("/")[-1]
+    return video_id
 
-res = _parse_sig_js(code)
-compat_chr = chr
-test_string = ''.join(map(compat_chr, range(len(sig))))
-cache_res = res(test_string)
-cache_spec = [ord(c) for c in cache_res]
-finalsig = ""
-for i in cache_spec:
-    finalsig = finalsig+sig[i]
-#+"%3D%3D&sig=
+def getWebpage(video_url):
+    video_webpage = requests.get(video_url)
+    return video_webpage
 
-print("sig : "+sig+"\n\nurl : "+url+"\n\nfinalsig : "+finalsig)
-
-print("essayes ca : "+url+"&sig="+finalsig)
-
+def getJsPlayer(video_webpage):
+    for i in video_webpage.iter_lines():
+        if "assets" in i.decode():
+            player_url = i.decode().split('"js":')[1].split('"')[1]
+    return player_url
 
 
+# Cette video a un probleme de localisation je crois https://www.youtube.com/watch?v=2N4Qi5oYgDk
+# video_url = "https://www.youtube.com/watch?v=B9NokdAGVvw"
+# video_url = "https://www.youtube.com/watch?v=WybG8FesMc8"
+# Ne télécharge pas les vidéos ayant des problèmes de localisations en "EN"
+video_url = input("Lien : ")
+
+video_id = getVideoID(video_url)
+video_webpage = getWebpage(video_url)
+player_url = "http://youtube.com"+getJsPlayer(video_webpage).replace("\\/","/")
+get_info_video_webpage = requests.get("http://youtube.com/get_video_info?video_id="+video_id)
+get_info_video_webpage = urllib.parse.unquote(get_info_video_webpage.text)
+allItag = get_info_video_webpage.split('"adaptiveFormats":[')[1].split(']')[0]
+
+
+#nic ca mere on fera un truc propre plus tard
+
+unItag = ""
+count0 = 0
+count1 = 0
+
+for i in allItag:
+    unItag = unItag+i
+    if i == "{":
+        count0 = count0+1
+    if i == "}":
+        count1 = count1+1
+    
+    if i != ",":
+        if count0 == count1:
+            if '"itag":140' in unItag:
+                itag140 = unItag
+            unItag = ""
+
+
+def sigYouMightBeSleeping(itag140):
+    cipher = '"cipher'+itag140.split('cipher')[1][0:-1]
+    cipher = urllib.parse.unquote(cipher)
+    error = True
+    temp = -1
+    sig = cipher.split('s=')[temp]
+    while error:
+        if len(sig) < 100 or 'cipher' in sig or '&' in sig:
+            temp = temp + 1
+            sig = cipher.split('s=')[temp].split("\\")[0]
+        else:
+            error = False
+    sig = sig.replace('"',"").split("\\")[0]
+    url = urllib.parse.unquote(itag140.split('url=')[1][0:-2]).split('%3')[0].split('\\')[0]
+    return sig, url
+
+
+def sigWaleuleu(itag140):
+    if 'cipher' not in itag140:
+        url = itag140.split('url":"')[1].split('"')[0].replace('\\u0026','&')
+        return url
+
+def decodeSig(sig,url):
+    code = requests.get(player_url).text
+    res = _parse_sig_js(code)
+    compat_chr = chr
+    test_string = ''.join(map(compat_chr, range(len(sig))))
+    cache_res = res(test_string)
+    cache_spec = [ord(c) for c in cache_res]
+    finalsig = ""
+    for i in cache_spec:
+        finalsig = finalsig+sig[i]
+    url = url+"&sig="+finalsig
+    return url
+
+
+
+try:
+    sig, url = sigYouMightBeSleeping(itag140)
+    url = decodeSig(sig,url)
+    print("j'ai pris le premier chemin")
+except:
+    url = sigWaleuleu(itag140)
+    print("j'ai pris le deuxieme chemin")
 
 
 
 
 
 
+print("essayes ca : "+url+"\n")
 
-
-
-
+#Télécharger le fichier : m4a_webpage = urllib.request.urlretrieve(m4a, "videoplayback.m4a")
 
 #kozypop twilligt
 "sp=sig\u0026s=RJpPlLswaQqgfSa3RaMo-YC_SSeVge1agMAnrF5I7aTIM3Ga8dZDgLUCIQDHIE8-Pu5DLevhcVb6Uih-OFCZOXt9gYGon2XZUvGm1Q==\u0026"

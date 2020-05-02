@@ -110,6 +110,7 @@ error = True
 temp = -1
 print()
 sig = cipher.split('s=')[temp]
+
 while error:
     if len(sig) < 100 or 'cipher' in sig or '&' in sig:
         temp = temp + 1
