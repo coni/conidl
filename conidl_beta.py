@@ -1,6 +1,6 @@
 # Marche avec la plus part des vidéos, pas toutes, il faut revoir ça€€
 
-""" Pour vous expliquer comment le programme marche avant que j'oublie comment ca marche : 
+"""  Pour vous expliquer comment le programme marche avant que j'oublie comment ca marche : 
 
 On va prendre "https://www.youtube.com/watch?v=B9NokdAGVvw" pour exemple.
 Pour commencer il faut juste récuperer l'id de cette vidéo "B9NokdAGVvw", puis avec cette id on va aller sur une direction
