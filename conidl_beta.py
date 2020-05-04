@@ -80,11 +80,9 @@ Et c'est la dernière partie que j'ai pas entièrement encore compris.
 
 """
 
-import urllib.request
-import requests
-import urllib.parse
+import urllib.request, urllib.parse
 from jsinterp import JSInterpreter
-import os, sys
+import os
 
 def _parse_sig_js(jscode):
         # funcname = _search_regex(
@@ -113,20 +111,16 @@ def _parse_sig_js(jscode):
 
 def get_Video_ID(video_url):
     try:
-        video_id = video_url.split("=")[1]
+        video_id = video_url.split("=")[1].split('&')[0]
     except IndexError:
         video_id = video_url.split("/")[-1]
     return video_id
 
-def get_Webpage(video_url):
-    video_webpage = requests.get(video_url)
-    return video_webpage
-
 def get_js_player(video_webpage):
-    for i in video_webpage.iter_lines():
-        if "assets" in i.decode():
-            player_url = i.decode().split('"js":')[1].split('"')[1]
-    return player_url
+    for i in video_webpage.splitlines():
+        if "assets" in i:
+            player_url = i.split('"js":')[1].split('"')[1]
+            return player_url
 
 def get_Itag(allItag,itag_id):
     if '\\"itag\\"' in allItag:
@@ -180,7 +174,10 @@ def sigWaleuleu(itag):
     return url
 
 def decodeSig(sig,url,player_url):
-    code = requests.get(player_url).text
+    code_webpage = urllib.request.urlopen(urllib.request.Request(player_url))
+    code = ""
+    for i in code_webpage:
+        code = code + i.decode()
     res = _parse_sig_js(code)
     compat_chr = chr
     test_string = ''.join(map(compat_chr, range(len(sig))))
@@ -193,28 +190,58 @@ def decodeSig(sig,url,player_url):
     return url
 
 def get_all_itag(webpage):
-    if "html>" in webpage.text:
-        for i in webpage.iter_lines():
-            if 'adaptiveFormats' in i.decode():
-                allItag = i.decode().split('"adaptiveFormats\\":[')[1].split(']')[0]
+    if '"adaptiveFormats\\":[' in webpage:
+        for i in webpage.splitlines():
+            if 'adaptiveFormats' in i:
+                allItag = i.split('"adaptiveFormats\\":[')[1].split(']')[0]
+                break
     else:
-        webpage = urllib.parse.unquote(webpage.text)
+        webpage = urllib.parse.unquote(webpage)
         allItag = webpage.split('"adaptiveFormats":[')[1].split(']')[0]
     return allItag
+
+def get_video_title(webpage):
+    for i in webpage.splitlines():
+        if '<span id="eow-title" class="watch-title" dir="ltr" title="' in i:
+            video_title = i.split('<span id="eow-title" class="watch-title" dir="ltr" title="')[1].split('"')[0]
+            return video_title
+
+def cleaning_filename(filename):
+    filename = video_title+".m4a"
+    filename = filename.replace('?',"").replace('<','').replace('>','').replace(':','').replace('/','').replace('\\','').replace('*','').replace('|','').replace('"','')
+    return filename
+
+def download(url, filename):
+    cleaning_filename(filename)
+    response = urllib.request.Request(url)
+    len_bytes = str(urllib.request.urlopen(response).info().get('Content-Length'))
+    response.add_header('Range','bytes=0-'+len_bytes)
+    myFile = open(filename,"wb")
+    myFile.write(urllib.request.urlopen(response).read())
+    myFile.close()
 
 video_url = input("Link : ")
 
 video_id = get_Video_ID(video_url)
-video_webpage = get_Webpage(video_url)
-player_url = "http://youtube.com"+get_js_player(video_webpage).replace("\\/","/")
+video_webpage = urllib.request.urlopen(urllib.request.Request(video_url))
+video_webpage_code = ""
+
+for i in video_webpage:
+        video_webpage_code += i.decode()
+
+player_url = "http://youtube.com"+get_js_player(video_webpage_code).replace("\\/","/")
+video_title = get_video_title(video_webpage_code)
 
 try:
-    all_Itag = get_all_itag(video_webpage)
+    all_Itag = get_all_itag(video_webpage_code)
 except:
-    get_info_video_webpage = requests.get("http://youtube.com/get_video_info?video_id="+video_id)
-    all_Itag = get_all_itag(get_info_video_webpage)
+    get_info_video_webpage = urllib.request.urlopen(urllib.request.Request("http://youtube.com/get_video_info?video_id="+video_id))
+    get_info_video_webpage_code = ""
+    for i in get_info_video_webpage:
+        get_info_video_webpage_code += i.decode()
+    all_Itag = get_all_itag(get_info_video_webpage_code)
 
-itag140 = get_Itag(all_Itag,249)
+itag140 = get_Itag(all_Itag,140)
 
 if 'cipher' in itag140:
     sig, url = sigYouMightBeSleeping(itag140)
@@ -222,6 +249,4 @@ if 'cipher' in itag140:
 else:
     url = sigWaleuleu(itag140)
 
-print(url)
-
-#Télécharger le fichier : m4a_webpage = urllib.request.urlretrieve(m4a, "videoplayback.m4a")
+download(url, video_title)
