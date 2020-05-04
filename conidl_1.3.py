@@ -1,6 +1,5 @@
 import urllib.request, urllib.parse
 from jsinterp import JSInterpreter
-import os
 
 def _parse_sig_js(jscode):
         # funcname = _search_regex(
