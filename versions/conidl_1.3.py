@@ -1,6 +1,5 @@
 import urllib.request, urllib.parse
 from jsinterp import JSInterpreter
-import os
 
 def _parse_sig_js(jscode):
         # funcname = _search_regex(
@@ -142,8 +141,8 @@ video_url = input("Link : ")
 
 video_id = get_Video_ID(video_url)
 video_webpage = urllib.request.urlopen(urllib.request.Request(video_url))
-video_webpage_code = ""
 
+video_webpage_code = ""
 for i in video_webpage:
         video_webpage_code += i.decode()
 

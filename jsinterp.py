@@ -237,10 +237,7 @@ class JSInterpreter(object):
                 \{(?P<code>[^}]+)\}''' % (
                 re.escape(funcname), re.escape(funcname), re.escape(funcname)),
             self.code)
-        if func_m is None:
-            raise ExtractorError('Could not find JS function %r' % funcname)
         argnames = func_m.group('args').split(',')
-
         return self.build_function(argnames, func_m.group('code'))
 
     def call_function(self, funcname, *args):
