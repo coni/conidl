@@ -137,7 +137,7 @@ def url_Verification(url):
                 elif "playlist" in url:
                     return "Playlist"
             else:
-                if len(url.split("/")[-11]) == 11:
+                if len(url.split("/")[-1]) == 11:
                     return "Video"
     return False
 
@@ -225,4 +225,4 @@ elif url_type == "Playlist":
         verification = downloadVideo(i, last_from_playlist=last_from_playlist)
         if verification is False:
             error.append(count)
-print(error)
+    print(error)
