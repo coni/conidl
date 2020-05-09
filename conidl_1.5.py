@@ -258,6 +258,7 @@ def get_video_in_playlist(url):
 
 while True:
     folder = input("folder : ")
+    music_folder = "./music/"+str(folder)+"/"
     if os.path.isdir(music_folder) is False:
         try:
             os.mkdir(music_folder)
@@ -266,7 +267,6 @@ while True:
             print ("Impossible to create the folder, please select another path")
 
 url = input("link.. : ")
-music_folder = "./music/"+str(folder)+"/"
 
 
 url_type = url_Verification(url)
