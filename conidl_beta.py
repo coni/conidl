@@ -83,7 +83,7 @@ Et c'est la dernière partie que j'ai pas entièrement encore compris.
 # coding: utf-8
 import urllib.request, urllib.parse
 from jsinterp import JSInterpreter
-import os
+import os, os.path
 import time
 
 def get_json_name(player_url,sig):
@@ -97,6 +97,7 @@ def get_webpage_code(webpage):
     return code
 
 def _parse_sig_js(jscode):
+
         for i in jscode.splitlines():
             if '=function(a){a=a.split("")' in i:
                 if len(i.split("=")[0]) == 2:
@@ -147,45 +148,89 @@ def get_Itag(allItag,itag_id):
                 unItag = ""
 
 def sigYouMightBeSleeping(itag):
-    cipher = '"cipher'+itag.split('cipher')[1][0:-1]
-    cipher = urllib.parse.unquote(cipher)
-    error = True
-    temp = -1
-    sig = cipher.split('s=')[temp]
-    while error:
-        if len(sig) < 100 or 'cipher' in sig or '&' in sig:
-            temp = temp + 1
-            sig = cipher.split('s=')[temp].split("\\")[0]
-        else:
-            error = False
-    sig = sig.replace('"',"").split("\\")[0]
-    url = urllib.parse.unquote(itag.split('url=')[1][0:-2]).split('%3')[0].split('\\')[0]
+    if 'signatureCipher' in itag:
+        cipher = '"signatureCipher'+itag.split('signatureCipher')[1][0:-1]
+        sig = cipher.split("=sig")[0].split("=")[-1].split("\\\\")[0].replace("%3D","=")
+        url = urllib.parse.unquote(cipher.split("url=")[1].split('"')[0].replace("\\/","/").replace("%3F","?").replace("%3D","=").replace("%26","&")).replace("%3D","").replace("\\","")
+    else:
+        cipher = '"cipher'+itag.split('cipher')[1][0:-1]
+
+    # try:
+    #     cipher = '"cipher'+itag.split('cipher')[1][0:-1]
+    # except:
+    #     print(itag)
+    #     exit()
+        
+        cipher = urllib.parse.unquote(cipher)
+        temp = -1
+        sig = cipher.split('s=')[temp]
+        while True:
+            if len(sig) < 100 or 'cipher' in sig or '&' in sig:
+                temp = temp + 1
+                sig = cipher.split('s=')[temp].split("\\")[0]
+            else:
+                break
+        sig = sig.replace('"',"").split("\\")[0]
+        url = urllib.parse.unquote(itag.split('url=')[1][0:-2]).split('"')[0].split('\\')[0]
+    if len(url) < 420:
+        print(itag)
+        exit()
+
     return sig, url
 
 def sigWaleuleu(itag):
     if '\\"url\\"' in itag:
         url = itag.split('\\"url\\":\\"')[1].split('"')[0].replace('\\u0026','&').replace("\\/","/").replace("\\","")
     else:
-        url = itag.split('url":"')[1].split('"')[0].replace('\\u0026','&')
+        try:
+            url = itag.split('url":"')[1]
+        except:
+            print(itag)
+            exit()
+        url = url.split('"')[0].replace('\\u0026','&')
     return url
 
 def decodeSig(sig,url,player_url, json_filename):
-    code_webpage = urllib.request.urlopen(urllib.request.Request(player_url))
-    code = get_webpage_code(code_webpage)
-    res = _parse_sig_js(code)
-    #res c'est la fonction Javascript pour trouver la 'clé' du chiffrement
+    if os.path.isfile("./cache/"+json_filename) is not True:
+        code_webpage = urllib.request.urlopen(urllib.request.Request(player_url))
+        code = get_webpage_code(code_webpage)
 
-    # Ca sort l'alphabet Ascii et le met dans test_string, la longueur dépend de la longueur du sig
-    test_string = ''.join(map(chr, range(len(sig))))
-    cache_res = res(test_string)
-    #cache_res va prendre l'alphabet d'en haut et le mélanger selon la fonction
-    cache_spec = [ord(c) for c in cache_res]
-    # Et enfaite l'alphabet modifier c'est juste pour obtenir les nombres a permuter (c'est pour ca qu'on utilise ord() pour avoir les codes des 
-    # caracteres )
+        # slt = open("base.js","r")
+        # code = slt.read()
+        res = _parse_sig_js(code)
+        # slt.close()
+        #res c'est la fonction Javascript pour trouver la 'clé' du chiffrement
+
+        # Ca sort l'alphabet Ascii et le met dans test_string, la longueur dépend de la longueur du sig
+        test_string = ''.join(map(chr, range(len(sig))))
+        cache_res = res(test_string)
+        #cache_res va prendre l'alphabet d'en haut et le mélanger selon la fonction
+        cache_spec = [ord(c) for c in cache_res]
+        # Et enfaite l'alphabet modifier c'est juste pour obtenir les nombres a permuter (c'est pour ca qu'on utilise ord() pour avoir les codes des 
+        # caracteres )
+        
+        json_file = open("./cache/"+json_filename,"w")
+        json_file.write("[")
+        for i in range(len(cache_spec)):
+            if i != len(cache_spec)-1:
+                json_file.write(str(cache_spec[i])+", ")
+            else:
+                json_file.write(str(cache_spec[i]))
+        json_file.write("]")
+        json_file.close()
+    else:
+        jsuisunouf = open("./cache/"+json_filename)
+        slt = jsuisunouf.read().splitlines()[0]
+        cache_spec = []
+        for i in range(len(slt.split(", "))):
+            cache_spec.append(int(slt.split(", ")[i].replace("[","").replace("]","")))
+        jsuisunouf.close()
+
     finalsig = ""
     for i in cache_spec:
         finalsig += sig[i]
     url = url+"&sig="+finalsig
+
     return url
 
 def get_all_itag(webpage):
@@ -202,7 +247,7 @@ def get_all_itag(webpage):
 def get_video_title(webpage):
     for i in webpage.splitlines():
         if '",\\"title\\":\\"' in i:
-            video_title = i.split('",\\"title\\":\\"')[1].split('\\",')[0].replace('\\/',"/").replace('\\\\\\"','"')
+            video_title = i.split('",\\"title\\":\\"')[1].split('\\",')[0].replace('\\/',"/").replace('\\\\\\"','"').replace("\\\\u0026","&")
             return video_title
 
 def cleaning_filename(filename):
@@ -212,9 +257,13 @@ def cleaning_filename(filename):
 def download(url, filename):
     filename = cleaning_filename(filename)
     response = urllib.request.Request(url)
-    len_bytes = str(urllib.request.urlopen(response).info().get('Content-Length'))
+    try:
+        len_bytes = str(urllib.request.urlopen(response).info().get('Content-Length'))
+    except:
+        print(url)
+        exit()
     response.add_header('Range','bytes=0-'+len_bytes)
-    myFile = open(filename+".m4a","wb")
+    myFile = open("./music/"+filename+".m4a","wb")
     myFile.write(urllib.request.urlopen(response).read())
     myFile.close()
 
@@ -227,46 +276,48 @@ def url_Verification(url):
                 elif "playlist" in url:
                     return "Playlist"
             else:
-                if len(url.split("/")[-11]) == 11:
+                if len(url.split("/")[-1]) == 11:
                     return "Video"
     return False
 
 def downloadVideo(video_url, last_from_playlist=False):
     try:
-        try:
-            index = video_url.split('index=')[1]
-        except:
-            index = None
-        video_url = video_url.split('&')[0]
-        video_id = get_Video_ID(video_url)
-        video_webpage = urllib.request.urlopen(urllib.request.Request(video_url))
-        video_webpage_code = get_webpage_code(video_webpage)
-
-        player_url = "http://youtube.com"+get_js_player(video_webpage_code).replace("\\/","/")
-        video_title = get_video_title(video_webpage_code)
-        try:
-            all_Itag = get_all_itag(video_webpage_code)
-        except:
-            get_info_video_webpage = urllib.request.urlopen(urllib.request.Request("http://youtube.com/get_video_info?video_id="+video_id))
-            get_info_video_webpage_code = get_webpage_code(get_info_video_webpage)
-            all_Itag = get_all_itag(get_info_video_webpage_code)
-
-        itag140 = get_Itag(all_Itag,140)
-
-        if 'cipher' in itag140:
-            sig, url = sigYouMightBeSleeping(itag140)
-            cache_cipher_name = get_json_name(player_url,sig)
-            url = decodeSig(sig,url,player_url, cache_cipher_name)
-        else:
-            url = sigWaleuleu(itag140)
-        if index:
-            print(str(index)+"/"+str(last_from_playlist),video_title)
-        else:
-            print(video_title)
-        download(url, video_title)
-        return True
+        index = video_url.split('index=')[1].split("&")[0]
     except:
+        index = None
+    video_url = video_url.split('&')[0]
+    video_id = get_Video_ID(video_url)
+    video_webpage = urllib.request.urlopen(urllib.request.Request(video_url))
+    video_webpage_code = get_webpage_code(video_webpage)
+    try:
+        player_url = "https://youtube.com"+get_js_player(video_webpage_code).replace("\\/","/")
+    except:
+        print("Impossible de récupérer le lecteur")
         return False
+    video_title = get_video_title(video_webpage_code)
+
+    try:
+        all_Itag = get_all_itag(video_webpage_code)
+    except:
+        get_info_video_webpage = urllib.request.urlopen(urllib.request.Request("https://youtube.com/get_video_info?video_id="+video_id))
+        get_info_video_webpage_code = get_webpage_code(get_info_video_webpage)
+        all_Itag = get_all_itag(get_info_video_webpage_code)
+
+    itag140 = get_Itag(all_Itag,140)
+
+    if 'cipher' in itag140 or 'Cipher' in itag140:
+        sig, url = sigYouMightBeSleeping(itag140)
+
+        cache_cipher_name = get_json_name(player_url,sig)
+        url = decodeSig(sig,url,player_url, cache_cipher_name)
+    else:
+        url = sigWaleuleu(itag140)
+    if last_from_playlist:
+        print(str(index)+"/"+str(last_from_playlist),video_title)
+    else:
+        print(video_title)
+    download(url, video_title)
+    return True
 
 def get_video_in_playlist(url):
     playlist_webpage_code = get_webpage_code(urllib.request.urlopen(urllib.request.Request(url)))
@@ -281,7 +332,7 @@ def get_video_in_playlist(url):
                 first_video = i.split('href="')[1].split('"')[0]
                 break
     
-    first_video_code = get_webpage_code(urllib.request.urlopen(urllib.request.Request("http://youtube.com"+first_video)))
+    first_video_code = get_webpage_code(urllib.request.urlopen(urllib.request.Request("https://youtube.com"+first_video)))
     validation = False
     for i in first_video_code.splitlines():
         if 'amp;index=1"' in i and 'http' not in i.split('href="')[1].split('"')[0]:
