@@ -71,13 +71,6 @@ def sigYouMightBeSleeping(itag):
         url = urllib.parse.unquote(cipher.split("url=")[1].split('"')[0].replace("\\/","/").replace("%3F","?").replace("%3D","=").replace("%26","&")).replace("%3D","").replace("\\","")
     else:
         cipher = '"cipher'+itag.split('cipher')[1][0:-1]
-
-    # try:
-    #     cipher = '"cipher'+itag.split('cipher')[1][0:-1]
-    # except:
-    #     print(itag)
-    #     exit()
-        
         cipher = urllib.parse.unquote(cipher)
         temp = -1
         sig = cipher.split('s=')[temp]
@@ -89,7 +82,9 @@ def sigYouMightBeSleeping(itag):
                 break
         sig = sig.replace('"',"").split("\\")[0]
         url = urllib.parse.unquote(itag.split('url=')[1][0:-2]).split('"')[0].split('\\')[0]
-    if len(url) < 420:
+        
+    if len(url) < 380:
+        print(url)
         print(itag)
         exit()
 
@@ -111,20 +106,10 @@ def decodeSig(sig,url,player_url, json_filename):
     if os.path.isfile("./cache/"+json_filename) is not True:
         code_webpage = urllib.request.urlopen(urllib.request.Request(player_url))
         code = get_webpage_code(code_webpage)
-
-        # slt = open("base.js","r")
-        # code = slt.read()
         res = _parse_sig_js(code)
-        # slt.close()
-        #res c'est la fonction Javascript pour trouver la 'clé' du chiffrement
-
-        # Ca sort l'alphabet Ascii et le met dans test_string, la longueur dépend de la longueur du sig
         test_string = ''.join(map(chr, range(len(sig))))
         cache_res = res(test_string)
-        #cache_res va prendre l'alphabet d'en haut et le mélanger selon la fonction
         cache_spec = [ord(c) for c in cache_res]
-        # Et enfaite l'alphabet modifier c'est juste pour obtenir les nombres a permuter (c'est pour ca qu'on utilise ord() pour avoir les codes des 
-        # caracteres )
         
         json_file = open("./cache/"+json_filename,"w")
         json_file.write("[")
@@ -180,7 +165,7 @@ def download(url, filename):
         print(url)
         exit()
     response.add_header('Range','bytes=0-'+len_bytes)
-    myFile = open("./music/"+filename+".m4a","wb")
+    myFile = open(music_folder+filename+".m4a","wb")
     myFile.write(urllib.request.urlopen(response).read())
     myFile.close()
 
@@ -202,8 +187,9 @@ def downloadVideo(video_url, last_from_playlist=False):
         index = video_url.split('index=')[1].split("&")[0]
     except:
         index = None
+
     video_url = video_url.split('&')[0]
-    video_id = get_Video_ID(video_url)
+
     video_webpage = urllib.request.urlopen(urllib.request.Request(video_url))
     video_webpage_code = get_webpage_code(video_webpage)
     try:
@@ -212,6 +198,12 @@ def downloadVideo(video_url, last_from_playlist=False):
         print("Impossible de récupérer le lecteur")
         return False
     video_title = get_video_title(video_webpage_code)
+
+    if os.path.isfile(music_folder+video_title+'.m4a') is True:
+        print(video_title,"Already there")
+        return False
+    
+    video_id = get_Video_ID(video_url)
 
     try:
         all_Itag = get_all_itag(video_webpage_code)
@@ -264,8 +256,9 @@ def get_video_in_playlist(url):
 
     return playlist_videos
 
-
-url = input("Link : ")
+folder = input("folder : ")
+url = input("link.. : ")
+music_folder = "./music/"+str(folder)
 
 url_type = url_Verification(url)
 if url_type == False:
