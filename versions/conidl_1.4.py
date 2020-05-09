@@ -228,4 +228,8 @@ elif url_type == "Playlist":
         verification = downloadVideo(i, last_from_playlist=last_from_playlist)
         if verification is False:
             error.append(count)
+<<<<<<< HEAD:versions/conidl_1.4.py
     print(error)
+=======
+    print(error)
+>>>>>>> b57db85d2b9c000464224b0fde8ce4e02ef939c2:conidl_1.4.py
