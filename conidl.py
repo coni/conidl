@@ -113,30 +113,39 @@ def sigWaleuleu(itag):
     return url
 
 def decodeSig(sig,url,player_url, json_filename):
-    if os.path.isfile("./cache/"+json_filename) is not True:
-        code_webpage = urllib.request.urlopen(urllib.request.Request(player_url))
-        code = get_webpage_code(code_webpage)
-        res = _parse_sig_js(code)
-        test_string = ''.join(map(chr, range(len(sig))))
-        cache_res = res(test_string)
-        cache_spec = [ord(c) for c in cache_res]
+    # if os.path.isfile("./cache/"+json_filename) is False:
+    #     code_webpage = urllib.request.urlopen(urllib.request.Request(player_url))
+    #     code = get_webpage_code(code_webpage)
+    #     res = _parse_sig_js(code)
+    #     test_string = ''.join(map(chr, range(len(sig))))
+    #     cache_res = res(test_string)
+    #     cache_spec = [ord(c) for c in cache_res]
+    #     if os.path.isdir("./cache/") is False:
+    #         os.mkdir("./cache/")
         
-        json_file = open("./cache/"+json_filename,"w")
-        json_file.write("[")
-        for i in range(len(cache_spec)):
-            if i != len(cache_spec)-1:
-                json_file.write(str(cache_spec[i])+", ")
-            else:
-                json_file.write(str(cache_spec[i]))
-        json_file.write("]")
-        json_file.close()
-    else:
-        jsuisunouf = open("./cache/"+json_filename)
-        slt = jsuisunouf.read().splitlines()[0]
-        cache_spec = []
-        for i in range(len(slt.split(", "))):
-            cache_spec.append(int(slt.split(", ")[i].replace("[","").replace("]","")))
-        jsuisunouf.close()
+    #     json_file = open("./cache/"+json_filename,"w+")
+    #     json_file.write("[")
+    #     for i in range(len(cache_spec)):
+    #         if i != len(cache_spec)-1:
+    #             json_file.write(str(cache_spec[i])+", ")
+    #         else:
+    #             json_file.write(str(cache_spec[i]))
+    #     json_file.write("]")
+    #     json_file.close()
+    # else:
+    #     jsuisunouf = open("./cache/"+json_filename)
+    #     slt = jsuisunouf.read().splitlines()[0]
+    #     cache_spec = []
+    #     for i in range(len(slt.split(", "))):
+    #         cache_spec.append(int(slt.split(", ")[i].replace("[","").replace("]","")))
+    #     jsuisunouf.close()
+    code_webpage = urllib.request.urlopen(urllib.request.Request(player_url))
+    code = get_webpage_code(code_webpage)
+    res = _parse_sig_js(code)
+    test_string = ''.join(map(chr, range(len(sig))))
+    cache_res = res(test_string)
+    cache_spec = [ord(c) for c in cache_res]
+
 
     finalsig = ""
     for i in cache_spec:
@@ -169,7 +178,11 @@ def cleaning_filename(filename):
 def download(url, filename):
     filename = cleaning_filename(filename)
     response = urllib.request.Request(url)
-    len_bytes = str(urllib.request.urlopen(response).info().get('Content-Length'))
+    try:
+        len_bytes = str(urllib.request.urlopen(response).info().get('Content-Length'))
+    except:
+        print(url)
+    
     response.add_header('Range','bytes=0-'+len_bytes)
     myFile = open(music_folder+filename+".m4a","wb")
     myFile.write(urllib.request.urlopen(response).read())
@@ -196,11 +209,17 @@ def get_video_in_playlist(url):
     first_video = ""
 
     for i in playlist_webpage_code.splitlines():
-        if ";index=1" in i:
+        if ";index=1" in i or ";index=2" in i:
             if i.split('href="')[1].split('"')[0].split('&')[0] != first_video:
                 first_video = i.split('href="')[1].split('"')[0]
                 break
-    
+
+        if "\\u0026index=2" in i:
+            lien = i.split('"url":"/watch?v=')[1].split('"')[0]
+            if "index=2" in lien:
+                first_video = "/watch?v=" + lien.replace("\\u0026","&")
+                break
+
     first_video_code = get_webpage_code(urllib.request.urlopen(urllib.request.Request("https://youtube.com"+first_video)))
     validation = False
     for i in first_video_code.splitlines():
@@ -208,6 +227,15 @@ def get_video_in_playlist(url):
             videos = i.split('href="')[1].split('"')[0]
             playlist_videos.append("https://youtube.com"+videos)
             validation = True
+
+        if '\\u0026index=1' in i:
+            for i in i.split('"url":"/watch?v='):
+                if "index" in i.split('"')[0]:
+                    videos = i.replace("\\u0026","&").split('"')[0]
+                    index = videos.split("index=")[1]
+                    if int(index)-1 == len(playlist_videos):
+                        playlist_videos.append("https://youtube.com/watch?v="+videos)
+            
         if "amp;index=" in i and validation is True:
             if i.split('href="')[1].split('"')[0] != videos and 'http' not in i.split('href="')[1].split('"')[0]:
                 videos = i.split('href="')[1].split('"')[0]
@@ -222,16 +250,18 @@ def downloadVideo(video_url, last_from_playlist=False):
         index = video_url.split('index=')[1].split("&")[0]
     except:
         index = None
-
+ 
     video_url = video_url.split('&')[0]
 
     video_webpage = urllib.request.urlopen(urllib.request.Request(video_url))
     video_webpage_code = get_webpage_code(video_webpage)
+
     try:
         player_url = "https://youtube.com"+get_js_player(video_webpage_code).replace("\\/","/")
     except:
         print("Impossible de récupérer le lecteur")
         return False
+    
     video_title = get_video_title(video_webpage_code)
 
     if os.path.isfile(music_folder+video_title+'.m4a') is True:
@@ -288,13 +318,17 @@ elif url_type == "Playlist":
     error = []
     playlist_videos = get_video_in_playlist(url)
     last_from_playlist = playlist_videos[-1].split('index=')[-1].split('&')[0]
-    for i in get_video_in_playlist(url):
+    for i in playlist_videos:
         count += 1
-        try:
-            verification = downloadVideo(i, last_from_playlist=last_from_playlist)
-        except urllib.error.HTTPError:
-            print("retry..")
-            verification = downloadVideo(i, last_from_playlist=last_from_playlist)
+        # try:
+        verification = downloadVideo(i, last_from_playlist=last_from_playlist)
+        # except urllib.error.HTTPError:
+        #     print("retry..")
+        #     try:
+        #         verification = downloadVideo(i, last_from_playlist=last_from_playlist)
+        #     except:
+        #         print("fail")
+        #         pass
 
         if verification is False:
             error.append(count)
