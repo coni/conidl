@@ -3,6 +3,8 @@ import urllib.request, urllib.parse
 from jsinterp import JSInterpreter
 import os, os.path
 
+default_folder = "/storage/emulated/0/Music/"
+
 def get_json_name(player_url,sig):
     player_url = player_url.split('.')[-1] + "_" + player_url.split('.')[-2].split("/")[0]+"_"+str(len(sig))+".json"
     return player_url
@@ -294,7 +296,7 @@ def downloadVideo(video_url, last_from_playlist=False):
 
 while True:
     folder = input("folder : ")
-    music_folder = "./music/"+str(folder)+"/"
+    music_folder = default_folder+str(folder)+"/"
     if os.path.isdir(music_folder) is False:
         try:
             os.mkdir(music_folder)
