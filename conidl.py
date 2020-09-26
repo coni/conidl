@@ -3,7 +3,7 @@ import urllib.request, urllib.parse
 from jsinterp import JSInterpreter
 import os, os.path
 
-default_folder = "/storage/emulated/0/Music/"
+default_folder = "./"
 
 def get_json_name(player_url,sig):
     player_url = player_url.split('.')[-1] + "_" + player_url.split('.')[-2].split("/")[0]+"_"+str(len(sig))+".json"
@@ -211,19 +211,22 @@ def get_video_in_playlist(url):
     first_video = ""
 
     for i in playlist_webpage_code.splitlines():
+        
         if ";index=1" in i or ";index=2" in i:
             if i.split('href="')[1].split('"')[0].split('&')[0] != first_video:
                 first_video = i.split('href="')[1].split('"')[0]
                 break
 
-        if "\\u0026index=2" in i:
+        if "\\u0026index=1" in i:
             lien = i.split('"url":"/watch?v=')[1].split('"')[0]
-            if "index=2" in lien:
+            if "index=1" in lien:
                 first_video = "/watch?v=" + lien.replace("\\u0026","&")
                 break
-
+    
     first_video_code = get_webpage_code(urllib.request.urlopen(urllib.request.Request("https://youtube.com"+first_video)))
     validation = False
+
+    log_file = open("log_file.txt","w+")
     for i in first_video_code.splitlines():
         if 'amp;index=1"' in i and 'http' not in i.split('href="')[1].split('"')[0]:
             videos = i.split('href="')[1].split('"')[0]
@@ -242,8 +245,6 @@ def get_video_in_playlist(url):
             if i.split('href="')[1].split('"')[0] != videos and 'http' not in i.split('href="')[1].split('"')[0]:
                 videos = i.split('href="')[1].split('"')[0]
                 playlist_videos.append("https://youtube.com"+videos)
-
-
     return playlist_videos
 
 
@@ -295,7 +296,7 @@ def downloadVideo(video_url, last_from_playlist=False):
     return True
 
 while True:
-    folder = input("folder : ")
+    folder = "NECTAR"
     music_folder = default_folder+str(folder)+"/"
     if os.path.isdir(music_folder) is False:
         try:
@@ -306,7 +307,7 @@ while True:
     else:
         break
 
-url = input("link.. : ")
+url = "https://www.youtube.com/playlist?list=PLzjD-HnzMfXLVK_7xjVvu6MY590ioHqyS"
 
 
 url_type = url_Verification(url)
