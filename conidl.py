@@ -228,10 +228,10 @@ def get_video_in_playlist(url):
 
     log_file = open("log_file.txt","w+")
     for i in first_video_code.splitlines():
-        if 'amp;index=1"' in i and 'http' not in i.split('href="')[1].split('"')[0]:
-            videos = i.split('href="')[1].split('"')[0]
-            playlist_videos.append("https://youtube.com"+videos)
-            validation = True
+        # if 'amp;index=1"' in i and 'http' not in i.split('href="')[1]:
+        #     videos = i.split('href="')[1].split('"')[0]
+        #     playlist_videos.append("https://youtube.com"+videos)
+        #     validation = True
 
         if '\\u0026index=1' in i:
             for i in i.split('"url":"/watch?v='):
@@ -296,7 +296,7 @@ def downloadVideo(video_url, last_from_playlist=False):
     return True
 
 while True:
-    folder = "NECTAR"
+    folder = input("folder : ")
     music_folder = default_folder+str(folder)+"/"
     if os.path.isdir(music_folder) is False:
         try:
@@ -307,7 +307,7 @@ while True:
     else:
         break
 
-url = "https://www.youtube.com/playlist?list=PLzjD-HnzMfXLVK_7xjVvu6MY590ioHqyS"
+url = input("link.. : ")
 
 
 url_type = url_Verification(url)
