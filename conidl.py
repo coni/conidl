@@ -3,7 +3,7 @@ import urllib.request, urllib.parse
 from jsinterp import JSInterpreter
 import os, os.path
 
-default_folder = "./"
+default_folder = "/storage/emulated/0/Music/"
 
 def get_json_name(player_url,sig):
     player_url = player_url.split('.')[-1] + "_" + player_url.split('.')[-2].split("/")[0]+"_"+str(len(sig))+".json"
@@ -33,10 +33,13 @@ def get_Video_ID(video_url):
     return video_id
 
 def get_js_player(video_webpage):
+    html = open("video page.html","w")
     for i in video_webpage.splitlines():
-        if "assets" in i:
-            player_url = i.split('"js":')[1].split('"')[1]
+        html.write(i+"\n")
+        if "PLAYER_JS_URL" in i:
+            player_url = i.split('"PLAYER_JS_URL":')[1].split('"')[1]
             return player_url
+    html.close()
 
 def get_Itag(allItag,itag_id):
     if '\\"itag\\"' in allItag:
