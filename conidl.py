@@ -5,6 +5,7 @@ import urllib, http.cookiejar
 from jsinterp import JSInterpreter
 import requests
 
+<<<<<<< HEAD
 def extract_json_objects(text, decoder=json.JSONDecoder()):
         pos = 0
         while True:
@@ -17,6 +18,19 @@ def extract_json_objects(text, decoder=json.JSONDecoder()):
                 pos = match + index
             except ValueError:
                 pos = match + 1
+=======
+default_folder = "/storage/emulated/0/Music/"
+
+def get_json_name(player_url,sig):
+    player_url = player_url.split('.')[-1] + "_" + player_url.split('.')[-2].split("/")[0]+"_"+str(len(sig))+".json"
+    return player_url
+
+def get_webpage_code(webpage):
+    code = ""
+    for i in webpage:
+        code += i.decode()
+    return code
+>>>>>>> d2712b3ca00f2f82d6e87eda14060009c75cd0e1
 
 def _parse_sig_js(jscode):
         for i in jscode.splitlines():
@@ -27,6 +41,7 @@ def _parse_sig_js(jscode):
         initial_function = jsi.extract_function(funcname)
         return lambda s: initial_function([s])
 
+<<<<<<< HEAD
 class conidl:
 
     def get_video_link(self, url):
@@ -65,6 +80,40 @@ class conidl:
             finalsig = res(s)
 
             url = url + "&%s=%s&ratebypass=yes" % (sp, finalsig)
+=======
+def get_Video_ID(video_url):
+    try:
+        video_id = video_url.split("=")[1].split('&')[0]
+    except IndexError:
+        video_id = video_url.split("/")[-1]
+    return video_id
+
+def get_js_player(video_webpage):
+    html = open("video page.html","w")
+    for i in video_webpage.splitlines():
+        html.write(i+"\n")
+        if "PLAYER_JS_URL" in i:
+            player_url = i.split('"PLAYER_JS_URL":')[1].split('"')[1]
+            return player_url
+    html.close()
+
+def get_Itag(allItag,itag_id):
+    if '\\"itag\\"' in allItag:
+        itag_string = '\\"itag\\":'
+    else:
+        itag_string = '"itag":'
+
+    unItag = ""
+    count0 = 0
+    count1 = 0
+
+    for i in allItag:
+        unItag = unItag+i
+        if i == "{":
+            count0 = count0+1
+        if i == "}":
+            count1 = count1+1
+>>>>>>> d2712b3ca00f2f82d6e87eda14060009c75cd0e1
         
         return url
 
