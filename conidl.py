@@ -1,22 +1,24 @@
 # coding: utf-8
-import urllib.request, urllib.parse
+import re
+import json
+import urllib, http.cookiejar
 from jsinterp import JSInterpreter
-import os, os.path
+import requests
 
-default_folder = "./"
-
-def get_json_name(player_url,sig):
-    player_url = player_url.split('.')[-1] + "_" + player_url.split('.')[-2].split("/")[0]+"_"+str(len(sig))+".json"
-    return player_url
-
-def get_webpage_code(webpage):
-    code = ""
-    for i in webpage:
-        code += i.decode()
-    return code
+def extract_json_objects(text, decoder=json.JSONDecoder()):
+        pos = 0
+        while True:
+            match = text.find('{', pos)
+            if match == -1:
+                break
+            try:
+                result, index = decoder.raw_decode(text[match:])
+                yield result
+                pos = match + index
+            except ValueError:
+                pos = match + 1
 
 def _parse_sig_js(jscode):
-
         for i in jscode.splitlines():
             if '=function(a){a=a.split("")' in i:
                 if len(i.split("=")[0]) == 2:
@@ -25,313 +27,203 @@ def _parse_sig_js(jscode):
         initial_function = jsi.extract_function(funcname)
         return lambda s: initial_function([s])
 
-def get_Video_ID(video_url):
-    try:
-        video_id = video_url.split("=")[1].split('&')[0]
-    except IndexError:
-        video_id = video_url.split("/")[-1]
-    return video_id
+class conidl:
 
-def get_js_player(video_webpage):
-    for i in video_webpage.splitlines():
-        if "assets" in i:
-            player_url = i.split('"js":')[1].split('"')[1]
-            return player_url
+    def get_video_link(self, url):
+        html_file = self.make_get(url)
 
-def get_Itag(allItag,itag_id):
-    if '\\"itag\\"' in allItag:
-        itag_string = '\\"itag\\":'
-    else:
-        itag_string = '"itag":'
+        s = None
+        for dictionnaire in extract_json_objects(html_file):
+            if "streamingData" in dictionnaire:
+                for video_information in dictionnaire["streamingData"]["adaptiveFormats"]:
+                    if video_information["itag"] == 140:
+                        if "signatureCipher" in video_information:
 
-    unItag = ""
-    count0 = 0
-    count1 = 0
-
-    for i in allItag:
-        unItag = unItag+i
-        if i == "{":
-            count0 = count0+1
-        if i == "}":
-            count1 = count1+1
-        
-        if i != ",":
-            if count0 == count1:
-                if itag_string+str(itag_id) in unItag:
-                    itag = unItag
-                    if itag[0] == ",":
-                        itag = itag[1:-1]
-                    if itag[-1] != "}":
-                        itag = itag+"}"
-                    return itag
-                unItag = ""
-
-def sigYouMightBeSleeping(itag):
-    tempsig = []
-    if 'signatureCipher' in itag:
-        cipher = '"signatureCipher'+itag.split('signatureCipher')[1][0:-1]
-        sig = cipher.split("=sig")[0].split("=")[-1].split("\\\\")[0].replace("%3D","=")
-        url = urllib.parse.unquote(cipher.split("url=")[1].split('"')[0].replace("\\/","/").replace("%3F","?").replace("%3D","=").replace("%26","&")).replace("%3D","").replace("\\","")
-    else:
-        cipher = '"cipher'+itag.split('cipher')[1][0:-1]
-        cipher = urllib.parse.unquote(cipher)
-        temp = -1
-        sig = cipher.split('s=')[temp]
-        while True:
-            if len(sig) < 100 or 'cipher' in sig or '&' in sig or '"' in sig or '%' in sig:
-                temp = temp + 1
-                try:
-                    sig = cipher.split('s=')[temp].split("\\")[0]
-                    if 'cipher' in sig or '&'in sig or '"' in sig or '%' in sig:
-                        pass
-                    else:
-                        tempsig.append(sig)
-                except:
-                    sig = "s=".join(tempsig)
-            else:
-                break
-        sig = sig.replace('"',"").split("\\")[0]
-        url = urllib.parse.unquote(itag.split('url=')[1][0:-2]).split('"')[0].split('\\')[0]
-        
-    if len(url) < 300:
-        print("Url Error")
-        print(url)
-        print(itag)
-        exit()
-
-    return sig, url
-
-def sigWaleuleu(itag):
-    if '\\"url\\"' in itag:
-        url = itag.split('\\"url\\":\\"')[1].split('"')[0].replace('\\u0026','&').replace("\\/","/").replace("\\","")
-    else:
-        try:
-            url = itag.split('url":"')[1]
-        except:
-            print("Itag Error")
-            print(itag)
-            exit()
-        url = url.split('"')[0].replace('\\u0026','&')
-    return url
-
-def decodeSig(sig,url,player_url, json_filename):
-    # if os.path.isfile("./cache/"+json_filename) is False:
-    #     code_webpage = urllib.request.urlopen(urllib.request.Request(player_url))
-    #     code = get_webpage_code(code_webpage)
-    #     res = _parse_sig_js(code)
-    #     test_string = ''.join(map(chr, range(len(sig))))
-    #     cache_res = res(test_string)
-    #     cache_spec = [ord(c) for c in cache_res]
-    #     if os.path.isdir("./cache/") is False:
-    #         os.mkdir("./cache/")
-        
-    #     json_file = open("./cache/"+json_filename,"w+")
-    #     json_file.write("[")
-    #     for i in range(len(cache_spec)):
-    #         if i != len(cache_spec)-1:
-    #             json_file.write(str(cache_spec[i])+", ")
-    #         else:
-    #             json_file.write(str(cache_spec[i]))
-    #     json_file.write("]")
-    #     json_file.close()
-    # else:
-    #     jsuisunouf = open("./cache/"+json_filename)
-    #     slt = jsuisunouf.read().splitlines()[0]
-    #     cache_spec = []
-    #     for i in range(len(slt.split(", "))):
-    #         cache_spec.append(int(slt.split(", ")[i].replace("[","").replace("]","")))
-    #     jsuisunouf.close()
-    code_webpage = urllib.request.urlopen(urllib.request.Request(player_url))
-    code = get_webpage_code(code_webpage)
-    res = _parse_sig_js(code)
-    test_string = ''.join(map(chr, range(len(sig))))
-    cache_res = res(test_string)
-    cache_spec = [ord(c) for c in cache_res]
-
-
-    finalsig = ""
-    for i in cache_spec:
-        finalsig += sig[i]
-    url = url+"&sig="+finalsig
-
-    return url
-
-def get_all_itag(webpage):
-    if '"adaptiveFormats\\":[' in webpage:
-        for i in webpage.splitlines():
-            if 'adaptiveFormats' in i:
-                allItag = i.split('"adaptiveFormats\\":[')[1].split(']')[0]
-                break
-    else:
-        webpage = urllib.parse.unquote(webpage)
-        allItag = webpage.split('"adaptiveFormats":[')[1].split(']')[0]
-    return allItag
-
-def get_video_title(webpage):
-    for i in webpage.splitlines():
-        if '",\\"title\\":\\"' in i:
-            video_title = i.split('",\\"title\\":\\"')[1].split('\\",')[0].replace('\\/',"/").replace('\\\\\\"','"').replace("\\\\u0026","&")
-            return video_title
-
-def cleaning_filename(filename):
-    filename = filename.replace('?',"").replace('<','').replace('>','').replace(':','').replace('/','').replace('\\','').replace('*','').replace('|','').replace('"','')
-    return filename
-
-def download(url, filename):
-    filename = cleaning_filename(filename)
-    response = urllib.request.Request(url)
-    try:
-        len_bytes = str(urllib.request.urlopen(response).info().get('Content-Length'))
-    except:
-        print(url)
-    
-    response.add_header('Range','bytes=0-'+len_bytes)
-    myFile = open(music_folder+filename+".m4a","wb")
-    myFile.write(urllib.request.urlopen(response).read())
-    myFile.close()
-
-def url_Verification(url):
-    if "." in url:
-        if "youtu.be" in url or "youtube.com" in url:
-            if "=" in url:
-                if len(url.split("=")[1].split("&")[0]) == 11:
-                    return "Video"
-                elif "playlist" in url:
-                    return "Playlist"
-            else:
-                if len(url.split("/")[-1]) == 11:
-                    return "Video"
-    return False
-
-def get_video_in_playlist(url):
-    playlist_webpage_code = get_webpage_code(urllib.request.urlopen(urllib.request.Request(url)))
-    playlist_videos = []
-
-    videos = ""
-    first_video = ""
-
-    for i in playlist_webpage_code.splitlines():
-        
-        if ";index=1" in i or ";index=2" in i:
-            if i.split('href="')[1].split('"')[0].split('&')[0] != first_video:
-                first_video = i.split('href="')[1].split('"')[0]
-                break
-
-        if "\\u0026index=1" in i:
-            lien = i.split('"url":"/watch?v=')[1].split('"')[0]
-            if "index=1" in lien:
-                first_video = "/watch?v=" + lien.replace("\\u0026","&")
-                break
-    
-    first_video_code = get_webpage_code(urllib.request.urlopen(urllib.request.Request("https://youtube.com"+first_video)))
-    validation = False
-
-    log_file = open("log_file.txt","w+")
-    for i in first_video_code.splitlines():
-        # if 'amp;index=1"' in i and 'http' not in i.split('href="')[1]:
-        #     videos = i.split('href="')[1].split('"')[0]
-        #     playlist_videos.append("https://youtube.com"+videos)
-        #     validation = True
-
-        if '\\u0026index=1' in i:
-            for i in i.split('"url":"/watch?v='):
-                if "index" in i.split('"')[0]:
-                    videos = i.replace("\\u0026","&").split('"')[0]
-                    index = videos.split("index=")[1]
-                    if int(index)-1 == len(playlist_videos):
-                        playlist_videos.append("https://youtube.com/watch?v="+videos)
+                            for k in video_information["signatureCipher"].split("&"):
+                                if "url=" in k:
+                                    url = urllib.parse.unquote(k.split("url=")[1])
+                                elif "s=" in k:
+                                    s = urllib.parse.unquote(k.split("s=")[1])
+                                elif "sp=" in k:
+                                    sp = k.split("sp=")[1]
+                        else:
+                            url = urllib.parse.unquote(video_information["url"])
             
-        if "amp;index=" in i and validation is True:
-            if i.split('href="')[1].split('"')[0] != videos and 'http' not in i.split('href="')[1].split('"')[0]:
-                videos = i.split('href="')[1].split('"')[0]
-                playlist_videos.append("https://youtube.com"+videos)
-    return playlist_videos
+            if "CLIENT_CANARY_STATE" in dictionnaire:
+                for j in dictionnaire["WEB_PLAYER_CONTEXT_CONFIGS"]["WEB_PLAYER_CONTEXT_CONFIG_ID_KEVLAR_WATCH"]:
+                    js_url = dictionnaire["WEB_PLAYER_CONTEXT_CONFIGS"]["WEB_PLAYER_CONTEXT_CONFIG_ID_KEVLAR_WATCH"]["jsUrl"]
+            
+            if "videoDetails" in dictionnaire:
+                for j in dictionnaire["videoDetails"]:
+                    title = dictionnaire["videoDetails"]["title"]
 
+        if s != None:
+            player_url = "https://www.youtube.com/%s" % js_url
+            code = self.make_get(player_url)
+            
+            res = _parse_sig_js(code)
+            finalsig = res(s)
 
-def downloadVideo(video_url, last_from_playlist=False):
-    try:
-        index = video_url.split('index=')[1].split("&")[0]
-    except:
-        index = None
- 
-    video_url = video_url.split('&')[0]
+            url = url + "&%s=%s&ratebypass=yes" % (sp, finalsig)
+        
+        return url
 
-    video_webpage = urllib.request.urlopen(urllib.request.Request(video_url))
-    video_webpage_code = get_webpage_code(video_webpage)
+    def crawling_dictionnary(self, dictionnaire, words, layer=0):
+        # essaye de convertir un autre type qu'une liste en String et de le mettre dans une liste
+        if type(words) != list:
+            try:
+                word = words
+                words = [str(word)]
+            except:
+                print("ERREUR: Impossible to convert to String")
+                exit()
 
-    try:
-        player_url = "https://youtube.com"+get_js_player(video_webpage_code).replace("\\/","/")
-    except:
-        print("Impossible de récupérer le lecteur")
-        return False
-    
-    video_title = get_video_title(video_webpage_code)
+        final_dict = {}
+        child_dictionnary = None
 
-    if os.path.isfile(music_folder+video_title+'.m4a') is True:
-        print(video_title,"Already there")
-        return False
-    
-    video_id = get_Video_ID(video_url)
+        for word in words:
+            final_dict[word] = []
 
-    try:
-        all_Itag = get_all_itag(video_webpage_code)
-    except:
-        get_info_video_webpage = urllib.request.urlopen(urllib.request.Request("https://youtube.com/get_video_info?video_id="+video_id))
-        get_info_video_webpage_code = get_webpage_code(get_info_video_webpage)
-        all_Itag = get_all_itag(get_info_video_webpage_code)
+        if type(dictionnaire) == dict:
+            for element in dictionnaire:
+                if element in words:
+                    if dictionnaire[element] not in final_dict[element]:
+                        final_dict[element].append(dictionnaire[element])
 
-    itag140 = get_Itag(all_Itag,140)
+                if type(dictionnaire[element]) == dict or type(dictionnaire[element]) == list:
+                    child_dictionnary = self.crawling_dictionnary(dictionnaire[element], words, layer + 1)
+                    for word in words:
+                        if child_dictionnary[word]:
+                            final_dict[word] += child_dictionnary[word]
 
-    if 'cipher' in itag140 or 'Cipher' in itag140:
-        sig, url = sigYouMightBeSleeping(itag140)
-        cache_cipher_name = get_json_name(player_url,sig)
-        url = decodeSig(sig,url,player_url, cache_cipher_name)
-    else:
-        url = sigWaleuleu(itag140)
-    if last_from_playlist:
-        print(str(index)+"/"+str(last_from_playlist),video_title)
-    else:
-        print(video_title)
-    download(url, video_title)
-    return True
+        elif type(dictionnaire) == list:
+            for element in dictionnaire:
+                if type(element) == dict or type(element) == list:
+                    child_dictionnary = self.crawling_dictionnary(element, words, layer + 1)
+                    for word in words:
+                        if child_dictionnary[word]:
+                            final_dict[word] += child_dictionnary[word]
 
-while True:
-    folder = input("folder : ")
-    music_folder = default_folder+str(folder)+"/"
-    if os.path.isdir(music_folder) is False:
+        if layer == 0:
+            for element in final_dict:
+                if len(final_dict[element]) == 1:
+                    final_dict[element] = final_dict[element][0] 
+
+        return final_dict
+
+    def delete_doublon(self,liste):
+        new_liste = []
+        for element in liste:
+            if element not in new_liste:
+                new_liste.append(element)
+        return new_liste
+
+    def get_playlist_videos(self, url):
+        code = self.make_get(url)
+
+        for dictionnaire in extract_json_objects(code):
+
+            if "contents" in dictionnaire:
+                for i in dictionnaire["contents"]["twoColumnBrowseResultsRenderer"]["tabs"]:
+                    playlist_json = i
+
+            if "INNERTUBE_API_KEY" in dictionnaire:
+                browser_key = dictionnaire["INNERTUBE_API_KEY"]
+                context_dict = dictionnaire["INNERTUBE_CONTEXT"]
+                context_dict.pop("adSignalsInfo")
+                context_dict.pop("user")
+                context_dict.pop("request")
+                playlist_data = {"context":dictionnaire["INNERTUBE_CONTEXT"]}
+                url_next_playlist = "https://www.youtube.com/youtubei/v1/browse?key=%s" % browser_key
+
+        video_list = []
+        import os
+        while True:
+            video_information = self.crawling_dictionnary(playlist_json, ["token","contents","onResponseReceivedActions"])
+            
+            if video_information["onResponseReceivedActions"]:
+                video = video_information["onResponseReceivedActions"][0]["appendContinuationItemsAction"]["continuationItems"]
+                
+            else:
+                video = video_information["contents"][2]
+
+                
+            for index in range(len(video)-1):
+                video_id = video[index]["playlistVideoRenderer"]["videoId"]
+                video_title = video[index]["playlistVideoRenderer"]["title"]["runs"][0]["text"]
+                video_list.append({"videoId":video_id,"title":video_title})
+                
+
+            if video_information["token"]:
+                data_next_playlist = playlist_data
+                data_next_playlist.update({"continuation":video_information["token"]})
+                data_next_playlist = str(data_next_playlist).replace("'",'"').replace(" {","{").replace(' "','"').replace(" True","true") # Ca marche mieux avec Requests cette requete
+                playlist_json = json.loads(self.make_post(url_next_playlist,data_next_playlist).text)
+            else:
+                return video_list
+
+    def download(self, url, filename):
+        response = urllib.request.Request(url)
+        
         try:
-            os.mkdir(music_folder)
-            break
-        except OSError:
-            print ("Impossible to create the folder, please select another path")
-    else:
-        break
+            len_bytes = str(urllib.request.urlopen(response).info().get('Content-Length'))
+        except:
+            print(url)
+        
+        response.add_header('Range','bytes=0-'+len_bytes)
+        myFile = open(filename+".m4a","wb")
+        myFile.write(urllib.request.urlopen(response).read())
+        myFile.close()
 
-url = input("link.. : ")
+    def cleaning_filename(self, filename):
+        filename = filename.replace('?',"").replace('<','').replace('>','').replace(':','').replace('/','').replace('\\','').replace('*','').replace('|','').replace('"','')
+        return filename
 
 
-url_type = url_Verification(url)
-if url_type == False:
-    print("Wrong link")
-    exit()
-elif url_type == "Video":
-    downloadVideo(url)
-elif url_type == "Playlist":
-    count = 0
-    error = []
-    playlist_videos = get_video_in_playlist(url)
-    last_from_playlist = playlist_videos[-1].split('index=')[-1].split('&')[0]
-    for i in playlist_videos:
-        count += 1
-        # try:
-        verification = downloadVideo(i, last_from_playlist=last_from_playlist)
-        # except urllib.error.HTTPError:
-        #     print("retry..")
-        #     try:
-        #         verification = downloadVideo(i, last_from_playlist=last_from_playlist)
-        #     except:
-        #         print("fail")
-        #         pass
+    def make_get(self, url, headers=None):
+    #  URLLIB
+        # request = self.browser_session.request.Request(url)
+        # request.add_header("User-Agent","Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0")
+        # request.add_header("Connection","keep-alive")
+        # return self.browser_session.request.urlopen(request).read().decode()
 
-        if verification is False:
-            error.append(count)
+    #  Requests
+        request = self.browser_session.get(url, headers=headers)
+        return request.text
+
+    def make_post(self, url, data):
+        
+    #  urllib
+        # # data = urllib.parse.urlencode(data)
+        # # json_data = json.dumps(data)
+        # # post_data = json_data.encode('utf-8')
+        # data = data.encode("utf-8")
+        # request = self.browser_session.request.Request(url, data=data)
+        # # request.add_header("User-Agent","Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0")
+        # # request.add_header("Connection","keep-alive")
+        # return self.browser_session.request.urlopen(request)
+
+    #  requests
+        return self.browser_session.post(url, data=data)
+
+
+    def __init__(self, url):
+        
+    #   """ setup le browser """
+    #  URLLIB
+        # self.browser_session = urllib
+        # self.cookie = http.cookiejar.MozillaCookieJar()
+        # cookie_handler = self.browser_session.request.build_opener(urllib.request.HTTPCookieProcessor(self.cookie))
+        # cookie_handler.addheaders = [('User-agent', 'Mozilla/5.0')]
+        # self.browser_session.request.install_opener(cookie_handler)
+
+    #  Requests    
+        self.browser_session = requests.session()
+
+        for i in self.get_playlist_videos("https://www.youtube.com/playlist?list=PLkYYpCMqACX57qgrgl3sfvAUxb39l-K7i"):
+            download_link = self.get_video_link("https://www.youtube.com/watch?v=%s" % i["videoId"])
+            filename = self.cleaning_filename(i["title"])
+            print(filename)
+            self.download(download_link, "./test/%s" % filename)
+
+conidl(input("link : "))
