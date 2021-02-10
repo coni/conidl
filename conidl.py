@@ -30,11 +30,15 @@ def _parse_sig_js(jscode):
 
 class conidl:
 
+
     def get_video_link(self, url):
         html_file = self.make_get(url)
 
         s = None
+        video_info = {}
+
         for dictionnaire in extract_json_objects(html_file):
+
             if "streamingData" in dictionnaire:
                 for video_information in dictionnaire["streamingData"]["adaptiveFormats"]:
                     if video_information["itag"] == 140:
@@ -49,6 +53,7 @@ class conidl:
                                     sp = k.split("sp=")[1]
                         else:
                             url = urllib.parse.unquote(video_information["url"])
+                video_info["title"] = self.crawling_dictionnary(dictionnaire,"title")["title"][0]
             
             if "CLIENT_CANARY_STATE" in dictionnaire:
                 for j in dictionnaire["WEB_PLAYER_CONTEXT_CONFIGS"]["WEB_PLAYER_CONTEXT_CONFIG_ID_KEVLAR_WATCH"]:
@@ -66,8 +71,9 @@ class conidl:
             finalsig = res(s)
 
             url = url + "&%s=%s&ratebypass=yes" % (sp, finalsig)
-        
-        return url
+
+        video_info["url"] = url    
+        return video_info
 
     def crawling_dictionnary(self, dictionnaire, words, layer=0):
         # essaye de convertir un autre type qu'une liste en String et de le mettre dans une liste
@@ -220,7 +226,7 @@ class conidl:
 
     #  Requests    
         self.browser_session = requests.session()
-        default_folder = "/storage/emulated/0/Music"
+        default_folder = "./"
         if folder != "":
             if folder[0] != "/":
                 folder = "%s/%s" % (default_folder, folder)
@@ -232,13 +238,17 @@ class conidl:
             temp += "%s/" % path
             if os.path.isdir(temp) is False:
                 os.mkdir(temp)
+
         if "playlist" in url:
             for i in self.get_playlist_videos(url):
-                download_link = self.get_video_link("https://www.youtube.com/watch?v=%s" % i["videoId"])
-                filename = self.cleaning_filename(i["title"])
+                video_information = self.get_video_link("https://www.youtube.com/watch?v=%s" % i["videoId"])
+                filename = self.cleaning_filename(video_information["title"])
                 print(filename)
-                self.download(download_link, "%s/%s" % (folder, filename))
+                self.download(video_information["url"], "%s/%s" % (folder, video_information["title"]))
         else:
-            print("Not a playlist")
+            video_information = self.get_video_link(url)
+            filename = self.cleaning_filename(video_information["title"])
+            print(filename)
+            self.download(video_information["url"], "%s/%s" % (folder, video_information["title"]))
 
 conidl(input("link : "), input("folder : "))
