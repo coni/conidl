@@ -34,7 +34,14 @@ class conidl:
         html_file = self.make_get(url)
 
         s = None
+
         for dictionnaire in extract_json_objects(html_file):
+            if "INNERTUBE_CONTEXT" in dictionnaire:
+                for i in dictionnaire["INNERTUBE_CONTEXT"]:
+                    print(i)
+            print("next dict")
+            input()
+
             if "streamingData" in dictionnaire:
                 for video_information in dictionnaire["streamingData"]["adaptiveFormats"]:
                     if video_information["itag"] == 140:
