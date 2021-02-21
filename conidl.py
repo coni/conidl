@@ -2,9 +2,12 @@
 import re
 import json
 import urllib, http.cookiejar
-from jsinterp import JSInterpreter
+import urllib3
+# from jsinterp import JSInterpreter
 import requests
 import os
+from jsinterpreter import coninterpreter
+
 
 def extract_json_objects(text, decoder=json.JSONDecoder()):
         pos = 0
@@ -24,7 +27,7 @@ def _parse_sig_js(jscode):
             if '=function(a){a=a.split("")' in i:
                 if len(i.split("=")[0]) == 2:
                     funcname = i.split("=")[0]
-        jsi = JSInterpreter(jscode)
+        jsi = JSInterpreter(jscode)        
         initial_function = jsi.extract_function(funcname)
         return lambda s: initial_function([s])
 
@@ -66,9 +69,18 @@ class conidl:
         if s != None:
             player_url = "https://www.youtube.com/%s" % js_url
             code = self.make_get(player_url)
+
             
-            res = _parse_sig_js(code)
-            finalsig = res(s)
+            for i in code.splitlines():
+                if '=function(a){a=a.split("")' in i:
+                    if len(i.split("=")[0]) == 2:
+                        funcname = i.split("=")[0]
+
+            test = coninterpreter(code)
+            finalsig = test.execute_function(funcname, s)
+            
+            # res = _parse_sig_js(code)
+            # finalsig = res(s)
 
             url = url + "&%s=%s&ratebypass=yes" % (sp, finalsig)
 
@@ -175,11 +187,14 @@ class conidl:
         try:
             len_bytes = str(urllib.request.urlopen(response).info().get('Content-Length'))
         except:
-            print(url)
+            print("%s ne marche pas, je sais pas vraiment pourquoi" % url)
         
         response.add_header('Range','bytes=0-'+len_bytes)
-        myFile = open(filename+".m4a","wb")
+
+        myFile = open("%s.m4a" % filename,"wb")
+
         myFile.write(urllib.request.urlopen(response).read())
+
         myFile.close()
 
     def cleaning_filename(self, filename):
@@ -251,4 +266,4 @@ class conidl:
             print(filename)
             self.download(video_information["url"], "%s/%s" % (folder, video_information["title"]))
 
-conidl(input("link : "), input("folder : "))
+conidl(input("link : "),input("folder/path : "))
