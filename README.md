@@ -5,7 +5,6 @@ coni trying to understand how YouTube downloader works
 Who cares about patch notes?
 
 ## Comment ca marche ?
-eh la vérité j'ai la flemme de faire un truc propre allez vous faire foutre  
 """  Pour vous expliquer comment le programme marche avant que j'oublie comment ca marche #: 
 
 On va prendre "https://www.youtube.com/watch?v=B9NokdAGVvw" pour exemple.
